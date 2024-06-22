@@ -1,0 +1,158 @@
+{%load static%}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="description" content="Простой в использовании матричный калькулятор с пошаговым объяснениями, который позволяет вам выполнять различные операции с матрицами, не тратя время на ручные вычисления">
+        <meta name="keywords" content="гдз, калькулятор, матриц, линейная алгебра, первый курс, математика, алгебра, пошаговое, решение, помощь">
+        <title>Матричный калькулятор</title>
+<!--    <style>
+            @import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Math&display=swap');
+        </style>  -->
+        <link href="{% static 'linear_eq_solver/css/general.css'%}" type="text/css" rel="stylesheet">
+        <link href="{% static 'linear_eq_solver/css/MathStyle.css'%}" type="text/css" rel="stylesheet">
+        <script type="text/javascript" src="{% static 'linear_eq_solver/js/modules/TreeNode.js'%}"></script>
+        <script type="text/javascript" src="{% static 'linear_eq_solver/js/modules/MathElements.js'%}"></script>
+        <script type="text/javascript" src="{% static 'linear_eq_solver/js/input.js'%}"></script>
+    </head>
+    <body>
+        <svg xmlns="http://www.w3.org/2000/svg" style="width: 0; height: 0; position: absolute; transform: scale(0);">
+            <symbol id="keyboard-icon-active" viewBox="0 0 86 42" fill="none">
+                <rect x="1.5" y="1.5" width="83" height="39" rx="8.5" stroke="#DB3F59" stroke-width="3"/>
+                <rect x="17" y="28" width="41" height="7" rx="3.5" fill="#DB3F59"/>
+                <rect x="7" y="28" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="61" y="28" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="72" y="28" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="7" y="18" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="61" y="18" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="72" y="18" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="39" y="18" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="50" y="18" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="18" y="18" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="29" y="18" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="7" y="8" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="61" y="8" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="72" y="8" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="39" y="8" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="50" y="8" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="18" y="8" width="7" height="7" rx="3" fill="#DB3F59"/>
+                <rect x="29" y="8" width="7" height="7" rx="3" fill="#DB3F59"/>
+            </symbol>
+            <symbol id="keyboard-icon" viewBox="0 0 86 42" fill="none">
+                <rect x="1.5" y="1.5" width="83" height="39" rx="8.5" stroke="#909090" stroke-width="3"/>
+                <rect x="17" y="28" width="41" height="7" rx="3.5" fill="#909090"/>
+                <rect x="7" y="28" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="61" y="28" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="72" y="28" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="7" y="18" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="61" y="18" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="72" y="18" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="39" y="18" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="50" y="18" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="18" y="18" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="29" y="18" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="7" y="8" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="61" y="8" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="72" y="8" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="39" y="8" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="50" y="8" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="18" y="8" width="7" height="7" rx="3" fill="#909090"/>
+                <rect x="29" y="8" width="7" height="7" rx="3" fill="#909090"/>
+            </symbol>
+        </svg>
+        <section class="to-be-static">
+            <div class="chat-container">
+                <div id="query-history">
+                    <div class="chat-box">
+                        <div class="chat-wrapper" id="msg-holder">
+
+                        </div>
+                    </div>
+                </div>
+                <div class="drawer">
+                    <div class="editor">
+                        <button id="send-button">Решить</button>
+                        <div class="input-container" id="input-container">
+                            <div class="main-input" id="main-input">
+                                <div id="formulas" style="cursor: text;display: inline-block;flex-grow: 1; min-height: 22px; overflow-wrap: anywhere;">
+                                    <span class="textarea">
+                                        <textarea></textarea>
+                                    </span>
+                                    <span class="unselectable" id="invite">Введите Значение</span>
+                                </div>
+                                <div id="keyboard-popup" style="width: 62.25px;height: 29.25px; cursor: pointer;">
+                                    <svg style="width: 62.25px;height: 29.25px;">
+                                        <use href="#keyboard-icon-active"></use>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="keyboard unactive" id="keyboard" tabindex="-1">
+                    <div id="keyboard-selection" style="display: contents;">
+                        <div id="td" data-append="\sqrt">
+                            <span class="unselectable" style="display: contents;">
+                                <span class="square-root">√</span>
+                                <span class="sqrt-head">
+                                    <span>☐</span>
+                                </span>
+                            </span>
+                        </div>
+                        <div id="td" data-append="\pow">
+                            <span class="unselectable" style="display: contents;">
+                                <span>x</span>
+                                <span class="sup">☐</span>
+                            </span>
+                        </div>
+                        <div id="td" data-append="\nthsqrt">
+                            <span class="unselectable" style="display: contents;">
+                                <span class="sup root">☐</span>
+                                <span class="square-root">√</span>
+                                <span class="sqrt-head">
+                                    <span>☐</span>
+                                </span>
+                            </span>
+                        </div>
+                        <div id="td" data-append="\frac">
+                            <span class="unselectable" style="display: contents;">
+                                <span class="fraction">
+                                    <span class="numerator">
+                                        ☐
+                                    </span>
+                                    <span class="denominator">
+                                        ☐
+                                    </span>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="create-custom">
+                        <div class="custom">
+                            <span><b>Создать систему размера:</b></span>
+                            <div class="custom-options-and-button">
+                                <span class="input-data">
+                                    <input id="s" type="number" name="input" placeholder="Size (max 10)" required maxlength="2" min="2" max="10" tabindex="-1"/>
+                                </span>
+                                <button id="create-system" class="create-button" tabindex="-1">Создать</button>
+                            </div>
+                        </div>
+                        <div class="custom">
+                            <span><b>Создать матрицу размера:</b></span>
+                            <div class="custom-options-and-button">
+                                <span class="input-data">
+                                    <input id="x" type="number" name="input" placeholder="X (max 10)" required maxlength="2" min="1" max="10" tabindex="-1"/>
+                                </span>
+                                <span class="input-data">
+                                    <input id="y" type="number" name="input" placeholder="Y (max 10)" required maxlength="2" min="1" max="10" tabindex="-1"/>
+                                </span>
+                                <button id="create-matrix" class="create-button" tabindex="-1">Создать</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </body>
+</html>
