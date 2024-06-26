@@ -1,14 +1,9 @@
-from decimal import getcontext, ROUND_FLOOR
-from ..tools.checkers import check_for_null
-from ..tools.converters import convert_array_to_decimal
-
-getcontext().prec = 31
-getcontext().rounding = ROUND_FLOOR
-print(getcontext())
-
 def Gauss(matrix, find_rank=False):
+    from ..tools.checkers import check_for_nulls
     """
     Solves systems of linear equations.
+    Has option find_rank that stops algorithm after 
+    Forward elimination and returns rank of a matrix.
 
     Args:
         2D array, that represents matrix
@@ -16,46 +11,50 @@ def Gauss(matrix, find_rank=False):
         matrix = [ [a a a | b] ]
                    [a a a | b]
     Returns:
-        -
+        New matrix with Decimal objects in it
     """
-    new_matrix = convert_array_to_decimal(matrix)
-    colums = len(new_matrix[0])
+    new_matrix = new_matrix = [row[:] for row in matrix]
+    columns = len(new_matrix[0])
+    new_matrix = check_for_nulls(new_matrix)
     # Lead values should be maximum numbers in a column
     # For more accurate computing
-    # Forward elimination
-    for lead_row in range(min(len(new_matrix), colums) - 1):
-        # Devide each element of lead_row on lead value to set it to 1
-        max_val = 0
-        at      = 0
-        for row in range(lead_row, len(new_matrix)):
-            if (abs(new_matrix[row][lead_row]) > max_val):
-                max_val = new_matrix[row][lead_row]
-                at = row
-        if (at > lead_row):
-            key = new_matrix[lead_row]
-            new_matrix[lead_row] = new_matrix[at]
-            new_matrix[at] = key
-        for cell in reversed(range(lead_row, colums)):
-            new_matrix[lead_row][cell] = round(new_matrix[lead_row][cell] / new_matrix[lead_row][lead_row], 9)
-        for row_after in range(lead_row+1, len(new_matrix)):
-            coef = new_matrix[row_after][lead_row]
-            if coef == 0:
+    for lead_row in range(len(new_matrix)):
+        if lead_row >= len(new_matrix):
+            break
+        for lead_column in range(lead_row, columns):
+            max_val = abs(new_matrix[lead_row][lead_column]) 
+            at = 0
+            # Find maxim value in a  lead_column
+            for row in range(lead_row + 1, len(new_matrix)):
+                if (max_val < abs(new_matrix[row][lead_column])):
+                    max_val = abs(new_matrix[row][lead_column])
+                    at = row
+            # If biggest found
+            if (at != 0):
+                key = new_matrix[at]
+                new_matrix[at] = new_matrix[lead_row]
+                new_matrix[lead_row] = key
+            
+            # If pivot value is zero
+            if (new_matrix[lead_row][lead_column] == 0):
                 continue
-            for celli in range(colums):
-                new_matrix[row_after][celli] -= round(new_matrix[lead_row][celli] * coef, 9)
-            check_for_null(new_matrix, new_matrix[row_after])
+            
+            # Devide lead_row for pivot vlaue add check for 1
+            for column in reversed(range(lead_column, columns)):
+                new_matrix[lead_row][column] = new_matrix[lead_row][column] / new_matrix[lead_row][lead_column]
+            for elim_row in range(len(new_matrix)):
+                coef = new_matrix[elim_row][lead_column]
+                if (elim_row == lead_row or coef == 0):
+                    continue
+                for elim_col in range(lead_column, columns):
+                    new_matrix[elim_row][elim_col] -= new_matrix[lead_row][elim_col] * coef
+            new_matrix = check_for_nulls(new_matrix)
+            break
     if (find_rank):
-      return len(new_matrix) 
-    # Backward elimination
-    for lead_row in reversed(range(1, min(len(new_matrix), colums))):
-        # Devide each elemet of lead_row on lead value to set it to 1
-        for cell in reversed(range(colums)):
-            new_matrix[lead_row][cell] = round(new_matrix[lead_row][cell] / new_matrix[lead_row][lead_row], 9)
-        for row_after in reversed(range(lead_row)):
-            coef = new_matrix[row_after][lead_row]
-            if coef == 0:
-                continue
-            for celli in range(colums):
-                new_matrix[row_after][celli] -= round(new_matrix[lead_row][celli] * coef, 9)
-
+        return (len(new_matrix), new_matrix)
     return new_matrix
+
+            
+
+
+

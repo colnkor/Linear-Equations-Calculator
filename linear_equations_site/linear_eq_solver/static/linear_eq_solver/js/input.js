@@ -10,6 +10,7 @@ var Solver = (function() {
     let xMatrix          = undefined
     let yMatrix          = undefined
     let ySystem          = undefined
+    let xSystem          = undefined
     let msgHolder        = undefined
     let sendButton       = undefined
     let selContainer     = undefined
@@ -29,8 +30,6 @@ var Solver = (function() {
         1: [['Решить систему линейных уравнений методом Гаусса', 'Gauss']],
     }
 
-    const matrixTemplate = new StringTree(['MxxMx1=Mx1', 'MxxmMx1=Mx1','MxyMy1=Mx1', 'MxymMy1=Mx1'])
-
     const commandHandlers = {
         'Backspace': handleBackspace,
         'Enter': handleEnter,
@@ -41,14 +40,13 @@ var Solver = (function() {
         '(': handleShortcuts,
         ')': handleShortcuts,
         '|': handleShortcuts,
-        '_': handleShortcuts
     }
 
     // Handler Mehods
     function handleEnter() {
         cursor.remove()
         clearInterval(blinkInterval)
-        sendToSolve()
+        SolutionProcess()
         textarea.blur()
     }
     function handleBackspace() {
@@ -136,6 +134,7 @@ var Solver = (function() {
     }
     function deleteSelection() {
         const selection = document.getElementsByClassName('selection')[0]
+        MathElements.disconnectObserversRecursively(selection)
         selection.parentNode.insertBefore(cursor, selection)
         selection.remove()
         isSelected = false
@@ -208,7 +207,7 @@ var Solver = (function() {
         const handler = commandHandlers[event.key]
         if (handler) {
             handler(event)
-        } else if (event.key.length == 1) {
+        } else if (event.key.length == 1 && /^[0-9a-zA-Z+\-*]$/.test(event.key)) {
             isTextareaClear = false
             cursor.parentNode.classList.remove('empty')
             writeText(event.key)
@@ -248,22 +247,23 @@ var Solver = (function() {
         }
     }
     function createMatrix(event) {
-        if (yMatrix.checkValidity() && xMatrix.checkValidity()) {
+        if (0 < yMatrix.value && yMatrix.value <= 10 &&
+            0 < xMatrix.value && xMatrix.value <= 10) {
             event.preventDefault()
-            createMathEq(null, MathElements.matrix(xMatrix.value,yMatrix.value))
+            // Main matrix
+            createMathEq(null, MathElements.matrix(xMatrix.value, yMatrix.value))
+            // vector
+            createMathEq(null, MathElements.matrix(yMatrix.value, 1, false))
+            // eq
+            areaOfReaction.appendChild(MathElements.createElement('span', '', '='))
+            // To advanced
+            createMathEq(null, MathElements.matrix(xMatrix.value, 1))
         }
     }
     function createSystem(event) {
-        if (ySystem.checkValidity()) {
+        if (ySystem.checkValidity() && xSystem.checkValidity()) {
             event.preventDefault()
-            createMathEq(null, MathElements.system(ySystem.value))
-        }
-    }
-    function sendToSolve() {
-        if (!isTextareaClear) {
-            createUserHTMLMessage()
-            isTextareaClear = true
-            areaOfReaction.appendChild(invite)
+            createMathEq(null, MathElements.system(parseInt(ySystem.value), parseInt(xSystem.value)))
         }
     }
     // Preparation for Solve
@@ -289,7 +289,7 @@ var Solver = (function() {
                     expr += '('+parseExpr(elem.children[2].children)+')**(1/'+parseExpr(elem.children[0].children)+')'
                     break
                 case 'pow':
-                    expr += '**('+parseExpr(elem.children[0].children)+')'
+                    expr += '^('+parseExpr(elem.children[0].children)+')'
                     break
                 default:
                     ch = elem.innerText
@@ -305,53 +305,22 @@ var Solver = (function() {
         return expr
     }
     function parseMatrix() {
-        let mapping = { '1': '1' };
-        let Symbols = ['x','y','E'];
-        let nextSymbol = 0
-        function charecterizeInt(sequence) {
-            let result = '';
-
-            for (let digit of sequence) {
-                if (digit in mapping) {
-                    result += mapping[digit];
-                } else {
-                    if (Symbols[nextSymbol] === 'E')
-                        throw new Error('Equation is not matrix form of linear system')
-                    mapping[digit] = Symbols[nextSymbol];
-                    result += Symbols[nextSymbol];
-                    nextSymbol++
-                }
-            }
-
-            return result;
-        }
-
         let matrix = []
-        let res = ''
         for (let elem of Array.from(areaOfReaction.children).slice(1)){
             if (elem.getAttribute('data-math') == 'matrix'){
                 let cols = elem.getAttribute('data-cols')
                 let rows = elem.getAttribute('data-rows')
                 matrix.push([elem, parseInt(rows), parseInt(cols)])
-                res += 'M'+charecterizeInt(rows+cols)
-            } else {
-                switch (elem.innerText){
-                    case '=':
-                        res += '='
-                        break
-                    case '×':
-                        res += 'm'
-                        break
-                    case '−':
-                    case '+':
-                        res += 'o'
-                        break
-                    default:
-                        res += 'U'
-                }
-            }
+            } 
         }
-        return [res, matrix]
+
+        if (matrix[0][1] == matrix[2][1] && matrix[0][2] == matrix[1][1] &&
+            matrix[1][2] == 1 && matrix[2][2] == 1
+        ) 
+            return matrix
+        else {
+            throw new Error('Not matrix form of linear equation')
+        }
     }
     function getMatrixData(block, rows, columns, symbolic_allowed=false) {
         const cells = block.querySelectorAll('td.matrix-cell');
@@ -395,28 +364,45 @@ var Solver = (function() {
                                             getMatrixData(matrix2[0], matrix2[1], matrix2[2], symbolic_allowed))
         return advancedMatrix
     }
+    function parseSystem() {
+        let system = undefined
+
+        for (let elem of Array.from(areaOfReaction.children).slice(1)){
+            if (elem.getAttribute('data-math') == 'system'){
+                let cols = elem.getAttribute('data-cols')
+                let rows = elem.getAttribute('data-rows')
+                system = [elem, parseInt(rows), parseInt(cols)+1]
+                break
+            } 
+        }
+
+        return getMatrixData(system[0], system[1], system[2], false)
+    }
     // Understands if query is a matrix form or system of linear equations
     function understandQuery() {
-        if (MathElements.cMatrix == 3 && MathElements.cSystems == 0) {
-            let advancedMatrix = undefined
-            const parsedData = parseMatrix() // Throws Error if more than two different sizes
-
-            if (!matrixTemplate.contains(parsedData[0])) {
-                console.log('WRG_INPUT:'+parsedData[0])
-                return [equationType.WRG_INPUT, null]
+        try {
+            if (MathElements.cMatrix == 3 && MathElements.cSystems == 0) {
+                let advancedMatrix = undefined
+                const parsedData = parseMatrix() // Throws Error if more than two different sizes
+    
+                // Throws error if in matrix there are character symbols
+                advancedMatrix = gatherMatrix(parsedData[0], parsedData[2])
+    
+                if (advancedMatrix == undefined)
+                    return [equationType.WRG_INPUT, null]
+    
+                return [equationType.MATRIX_EQ, advancedMatrix]
+            } else if (MathElements.cMatrix == 0 && MathElements.cSystems == 1) {
+                // Throws error if in matrix there are character symbols
+                const parsedData = parseSystem()
+    
+                return [equationType.MATRIX_EQ, parsedData]
             }
-
-            if (parsedData[0].slice(0,2) === 'Mx')
-                advancedMatrix = gatherMatrix(parsedData[1][0], parsedData[1][2])
-
-            if (advancedMatrix == undefined)
-                return [equationType.WRG_INPUT, null]
-
-            return [equationType.MATRIX_EQ, advancedMatrix]
-        } else if (MathElements.cMatrix == 0 && MathElements.cSystems == 1) {
-
-        } else 
-            return [equationType.CANNOT_SOLVE, null]
+        } catch (e) {
+            return [equationType.WRG_INPUT, null]
+        }
+        
+        return [equationType.CANNOT_SOLVE, null]
     }
     function showMethodSelector(taskname) {
         return new Promise((resovle) => {
@@ -473,15 +459,34 @@ var Solver = (function() {
             console.log(e)
         }
     }
+    async function dictToString(dict) {
+        return Object.entries(dict)
+            .map(([key, value]) => `${key}=${value}`)
+            .join(', ');
+    }
     async function SolutionProcess() {
         if (!isTextareaClear) {
             // In matrix form or system
             const query = understandQuery()
             if (query[0] == equationType.MATRIX_EQ) {
                 const selectedMethod = await showMethodSelector(query[0])
-                const solution = await sendDataToServer('matrix-form-linear-eq', query[1], selectedMethod)
-                console.log(solution)
-            }
+
+                if (selectedMethod) {
+                    createUserHTMLMessage()
+                    const solution = await sendDataToServer('matrix-form-linear-eq', query[1], selectedMethod)
+                    if (solution['result'] === 'excuse') {
+                        createServerHTMLAsnwer(MathElements.createElement('span', '', solution['answer']))
+                    } else if (solution['result'] === 'answer') {
+                        const solString = await dictToString(solution['answer'])
+                        createServerHTMLAsnwer(MathElements.convertStringToMath(solString))
+                    }
+                }
+            } else if (query[0] == equationType.CANNOT_SOLVE)
+                createServerHTMLAsnwer(MathElements.createElement('span', '', 
+                    `Простите, однако наше приложение умеет решать только системы линейных уравнений. 😔`))
+            else if (query[0] == equationType.WRG_INPUT)
+                createServerHTMLAsnwer(MathElements.createElement('span', '', 
+            'Проверьте корректность ввода и попробуйте снова! 🤓'))
         }
     }
     // Generators
@@ -518,6 +523,17 @@ var Solver = (function() {
 
         return mthdslct
     }
+    function createServerHTMLAsnwer(ans) {
+        const srvmsg = document.createElement('span')
+        const con    = document.createElement('span')
+        con.style.display = 'contents'
+        srvmsg.className = 'srv-msg'
+
+        srvmsg.appendChild(con)
+        con.appendChild(ans)
+
+        msgHolder.appendChild(srvmsg)
+    }
     function createUserHTMLMessage() {
         const usrmsg = document.createElement('span')
         const cont   = document.createElement('span')
@@ -538,7 +554,9 @@ var Solver = (function() {
         }
         if (object == null)
             object = MathElements.executeMethod(eqname)
-        if (isCursorSet) {
+
+        key = object.getBlock().getAttribute('data-math')
+        if (isCursorSet && key != 'matrix' && key != 'system') {
             //if (event.target.dataset.append != '\\pow')
             cursor.parentNode.classList.remove('empty')
             cursor.parentNode.insertBefore(object.getBlock(), cursor)
@@ -546,6 +564,7 @@ var Solver = (function() {
             isCursorSet = true
             areaOfReaction.appendChild(object.getBlock())
         }
+
         isTextareaClear = false
         invite.remove()
         object.startObserve()
@@ -565,6 +584,7 @@ var Solver = (function() {
             xMatrix        = document.getElementById('x')
             yMatrix        = document.getElementById('y')
             ySystem        = document.getElementById('s')
+            xSystem        = document.getElementById('xs')
             msgHolder      = document.getElementById('msg-holder')
             sendButton     = document.getElementById('send-button')
             selContainer   = document.getElementById('query-history')

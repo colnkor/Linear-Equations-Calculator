@@ -1,17 +1,99 @@
 class MathElements {
-    static functionNames = new StringTree(['\\sqrt', '\\pow', '\\frac', '\\nthsqrt', '\\parentheses', '\\abs', '\\matrix', '\\subscript', '\\system'])
+    static functionNames = new StringTree(['\\sqrt', '\\pow', '\\frac', '\\nthsqrt', '\\parentheses', '\\abs'])
     static ses = {
         '^' : '\\pow',
         '(' : '\\parentheses',
         ')' : '\\parentheses',
         '/' : '\\frac',
         '|' : '\\abs',
-        '_' : '\\subscript'
     }
     static observers = new WeakMap()
 
     static cSystems = 0
     static cMatrix = 0
+
+    static convertStringToMath(string) {
+        function findFirstParenthesesContent(str) {
+            let count = 0;
+            let start = -1;
+            
+            for (let i = 0; i < str.length; i++) {
+                if (str[i] === '(') {
+                    if (count === 0) start = i;
+                    count++;
+                } else if (str[i] === ')') {
+                    count--;
+                    if (count === 0 && start !== -1) {
+                        return str.substring(start + 1, i);
+                    }
+                }
+            }
+            
+            return null; // Если не найдено соответствующих скобок
+        }
+
+        function memoryRelease(putIn, memory) {
+            for (let elem of memory) {
+                putIn.appendChild(elem)
+            }
+            memory.length = 0
+        }
+
+        const mathBlock = document.createElement('span');
+        mathBlock.style.display = 'contents';
+
+        let putIn = mathBlock
+        let memory = []
+        for (let elem = 0; elem < string.length; elem++) {
+            if (/\d+/.test(string[elem])) {
+                const num = this.createElement('span', '', string[elem])
+                memory.push(num)
+                continue
+            }
+            if (string[elem] === '/') {
+                const frac = this.frac(false)
+                memoryRelease(frac.getCursorPosition(), memory)
+                const mat = string.slice(elem).match(/\/(\d*)/)
+                frac.getBlock().lastElementChild.appendChild(this.convertStringToMath(mat[1]))
+                putIn.appendChild(frac.getBlock())
+                string = string.replace(mat[0], '')
+                elem--
+                continue
+            }
+            else if (string[elem] === '_') {
+                const subscript = this.subscript(false)
+                const index = this.createElement('span', '', string[elem+1])
+                subscript.getCursorPosition().appendChild(index)
+                putIn.appendChild(subscript.getBlock())
+                elem++
+                continue
+            }
+            memoryRelease(putIn, memory)
+            if (string[elem] === '(') {
+                const paren = this.parentheses(false)
+                const mat = findFirstParenthesesContent(mat)
+                paren.getCursorPosition().appendChild(this.convertStringToMath(mat))
+                memory.push(paren.getBlock())
+                string = string.replace('('+mat+')', '')
+                elem--
+                continue
+            } else if (string[elem] === 's') {
+                const mat = findFirstParenthesesContent(string)
+                if (mat) {
+                    const sq = this.sqrt(false)
+                    sq.getCursorPosition().appendChild(this.convertStringToMath(mat))
+                    memory.push(sq.getBlock())
+                    string = string.replace('sqrt('+mat+')', '')
+                    elem--
+                    continue
+                }
+            }
+            putIn.appendChild(this.createElement('span', '', string[elem]))
+        }
+        memoryRelease(putIn, memory)
+
+        return mathBlock;
+    }
 
     static observeElement(parentNode, elem, toChange=[elem.previousSibling]) {
         const observer = new MutationObserver(() => {
@@ -51,7 +133,7 @@ class MathElements {
         return elem;
     }
 
-    static system(y = 2) {
+    static system(y = 2, x = 2) {
         const block = this.createElement('span', 'block')
         const parenL = this.createElement('span', 'paren unselectable', '{')
         const systemContent = this.createElement('table', 'system-content')
@@ -59,28 +141,42 @@ class MathElements {
 
         block.setAttribute('data-math', 'system')
         block.setAttribute('data-rows', `${y}`)
+        block.setAttribute('data-cols', `${x}`)
         block.appendChild(parenL)
         block.appendChild(systemContent)
         systemContent.appendChild(table)
         systemContent.setAttribute('data-reactas', 'block')
         
         for (let i = 0; i < y; i++) {
-            const row = this.createElement('tr', 'system-row empty')
-            row.setAttribute('data-displace-cursor', 'in')
-            row.setAttribute('data-empty', 'true')
-            table.appendChild(row)
+            let funny_index = 1
+            const row = this.createElement('tr', 'matrix-row');
+            row.setAttribute('data-reactas', 'block')
+            for (let j = 0; j < x + 1; j++) {
+                const cell = this.createElement('td', 'matrix-cell empty');
+                cell.setAttribute('data-displace-cursor', 'in')
+                cell.setAttribute('data-empty', 'true')
+                row.appendChild(cell);
+                if (j != x) {
+                    row.appendChild(this.createElement('span', 'unselectable', 'x'))
+                    row.appendChild(this.subscript(false, funny_index.toString()).getBlock())
+                    funny_index++
+                } else {
+                    row.insertBefore(this.createElement('span', 'unselectable', '='), cell)
+                }
+            }
+            table.appendChild(row);
         }
 
         this.cSystems++
 
         return {
-            getCursorPosition: () => table.firstChild, // Start at the first row
+            getCursorPosition: () => table.firstChild.firstChild, // Start at the first row
             getBlock: () => block,
             startObserve: () => this.observeElement(block, table, [parenL])
         };
     }
 
-    static matrix(rows = 2, cols = 2) {
+    static matrix(rows = 2, cols = 2, editable=true) {
         const block = this.createElement('span', 'block');
         const parenL = this.createElement('span', 'paren unselectable', '[');
         const parenR = this.createElement('span', 'paren unselectable', ']');
@@ -97,15 +193,21 @@ class MathElements {
         block.appendChild(parenR);
     
         this.cMatrix++
-
+        let cell_class = (editable) ? 'matrix-cell empty' : 'matrix-cell unselectable'
+        let funny_index = 1
         // Create rows and columns
         for (let i = 0; i < rows; i++) {
             const row = this.createElement('tr', 'matrix-row');
             row.setAttribute('data-reactas', 'block')
             for (let j = 0; j < cols; j++) {
-                const cell = this.createElement('td', 'matrix-cell empty');
+                const cell = this.createElement('td', cell_class);
                 cell.setAttribute('data-displace-cursor', 'in')
                 cell.setAttribute('data-empty', 'true')
+                if (!editable) {
+                    cell.appendChild(this.createElement('span', '', 'x'))
+                    cell.appendChild(this.subscript(false, funny_index.toString()).getBlock())
+                    funny_index++
+                }
                 row.appendChild(cell);
             }
             table.appendChild(row);
@@ -137,7 +239,7 @@ class MathElements {
         }
     }
 
-    static parentheses() {
+    static parentheses(isEmpty=true) {
         const block   = this.createElement('span', 'block')
         const parenR  = this.createElement('span', 'paren unselectable', '(')
         const blockin = this.createElement('span', 'block empty')
@@ -149,6 +251,11 @@ class MathElements {
         block.appendChild(parenL)
         blockin.setAttribute('data-empty', 'true')
         blockin.setAttribute('data-displace-cursor', 'in')
+
+        if (!isEmpty) {
+            blockin.classList.remove('empty')
+        }
+
         return {
             getCursorPosition: () => blockin,
             getBlock: () => block,
@@ -156,7 +263,7 @@ class MathElements {
         }
     }
 
-    static frac() {
+    static frac(isEmpty=true) {
         const block = this.createElement('span', 'block')
         const num   = this.createElement('span', 'numerator empty')
         const den   = this.createElement('span', 'denominator empty')
@@ -168,6 +275,11 @@ class MathElements {
         block.setAttribute('data-math', 'fraction')
         block.appendChild(num)
         block.appendChild(den)
+
+        if (!isEmpty) {
+            num.classList.remove('empty')
+            den.classList.remove('empty')
+        }
         return {
             getCursorPosition: () => num,
             getBlock: () => block,
@@ -195,7 +307,7 @@ class MathElements {
         }
     }
 
-    static subscript() {
+    static subscript(isEmpty=true, defaultVal='') {
         const block     = this.createElement('span', 'block')
         const subscript = this.createElement('sup', 'empty')
 
@@ -203,6 +315,13 @@ class MathElements {
         block.appendChild(subscript)
         subscript.setAttribute('data-empty', 'true')
         subscript.style.verticalAlign = '-.4em'
+        subscript.innerText = defaultVal
+
+        if (!isEmpty) {
+            subscript.classList.remove('empty')
+            block.classList.add('unselectable')
+        }
+
         return {
             getCursorPosition : () => subscript,
             getBlock : () => block,
@@ -224,7 +343,7 @@ class MathElements {
         }
     }
 
-    static sqrt() {
+    static sqrt(isEmpty=true) {
         const block = this.createElement('span', 'block')
         const root  = this.createElement('span', 'square-root unselectable', '√')
         const head  = this.createElement('span', 'sqrt-head empty')
@@ -234,6 +353,9 @@ class MathElements {
         block.appendChild(head)
         head.setAttribute('data-displace-cursor', 'in')
         head.setAttribute('data-empty', 'true')
+
+        if (!isEmpty)
+            head.classList.remove('empty')
         return {
             getCursorPosition : () => head,
             getBlock : () => block,

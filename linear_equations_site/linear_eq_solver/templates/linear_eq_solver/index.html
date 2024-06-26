@@ -12,6 +12,7 @@
         </style>  -->
         <link href="{% static 'linear_eq_solver/css/general.css'%}" type="text/css" rel="stylesheet">
         <link href="{% static 'linear_eq_solver/css/MathStyle.css'%}" type="text/css" rel="stylesheet">
+        <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.ico' %}"/>
         <script type="text/javascript" src="{% static 'linear_eq_solver/js/modules/TreeNode.js'%}"></script>
         <script type="text/javascript" src="{% static 'linear_eq_solver/js/modules/MathElements.js'%}"></script>
         <script type="text/javascript" src="{% static 'linear_eq_solver/js/input.js'%}"></script>
@@ -133,13 +134,16 @@
                             <span><b>Создать систему размера:</b></span>
                             <div class="custom-options-and-button">
                                 <span class="input-data">
-                                    <input id="s" type="number" name="input" placeholder="Size (max 10)" required maxlength="2" min="2" max="10" tabindex="-1"/>
+                                    <input id="s" type="number" name="input" placeholder="Size (max 10)" required maxlength="2" min="1" max="10" tabindex="-1"/>
+                                </span>
+                                <span class="input-data">
+                                    <input id="xs" type="number" name="input" placeholder="Size (max 10)" required maxlength="2" min="1" max="10" tabindex="-1"/>
                                 </span>
                                 <button id="create-system" class="create-button" tabindex="-1">Создать</button>
                             </div>
                         </div>
                         <div class="custom">
-                            <span><b>Создать матрицу размера:</b></span>
+                            <span><b>Создать основную матрицу размера:</b></span>
                             <div class="custom-options-and-button">
                                 <span class="input-data">
                                     <input id="x" type="number" name="input" placeholder="X (max 10)" required maxlength="2" min="1" max="10" tabindex="-1"/>
@@ -153,6 +157,30 @@
                     </div>
                 </div>
             </div>
+{% if show_info %}
+    <div id="info-block">
+        <div id="close-button"></div>
+        <p>
+            Добро пожаловать на наш сайт для решения систем линейных уравнений! Здесь вы найдете удобную клавиатуру для создания шаблона системы или матричного уравнения. Вы можете выбрать различные математические конструкции, такие как корень, степень, модуль, и другие.
+
+            <br> <b>Прошу принять во внимание то, что необходимо воздержатся от использования математических сокращений!</b>
+            Если нужно умножить, добавьте оператор умножения, если нужен отрицательный x в уравнение — напишите -1
+            
+            <br>Для создания математических конструкций, вы можете использовать следующие команды: \frac, \pow, \sqrt, \nthsqrt, \parentheses, \abs. Эти команды помогут вам создать необходимые математические выражения для ваших уравнений.
+
+            <br>Однако, пожалуйста, обратите внимание, что наш сайт может решать только системы линейных уравнений. Мы надеемся, что вы найдете наш сайт полезным и удобным в использовании!
+
+        </p>
+    </div>
+    <script>
+        const info_block = document.getElementById('info-block')
+
+        window.addEventListener('load', function () {
+  info_block.style.left = '50%';
+})
+        document.getElementById('close-button').addEventListener('click', () => {info_block.remove()})
+    </script>
+{% endif %}
         </section>
     </body>
 </html>
