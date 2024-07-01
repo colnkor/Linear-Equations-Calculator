@@ -3,20 +3,18 @@ var Solver = (function() {
     let areaOfReaction   = undefined
     let blinkInterval    = undefined
     let cursor           = undefined
-    let keyboard         = undefined
-    let keyboardPopup    = undefined
     let invite           = undefined
-    let textarea         = undefined
-    let xMatrix          = undefined
-    let yMatrix          = undefined
-    let ySystem          = undefined
-    let xSystem          = undefined
+    let textarea         = undefined 
+    let drawer           = undefined
+    let x                = undefined
+    let y                = undefined
     let msgHolder        = undefined
-    let sendButton       = undefined
     let selContainer     = undefined
     let isTextareaClear  = true
     let isCursorSet      = false
     let isSelected       = false
+
+    let observer = undefined
 
     const equationType = {
         CANNOT_SOLVE: -2,
@@ -77,7 +75,7 @@ var Solver = (function() {
         cursor.parentNode.getAttribute('data-empty'))
             cursor.parentNode.classList.add('empty')
     }
-    function handleSpace(event) {
+    function handleSpace() {
         const cmd = cursor.parentNode
         const func = cmd.textContent.replace(/\u200B/g, '')
         if (cmd.classList.contains("command")) {
@@ -101,7 +99,7 @@ var Solver = (function() {
         return
     }
 
-    function handleSlash(event) {
+    function handleSlash() {
         const insertArea = cursor.parentNode
         if (insertArea.classList.contains("command")) {
             insertArea.parentNode.appendChild(cursor)
@@ -177,12 +175,12 @@ var Solver = (function() {
             default:
                 if (obj.classList.contains('empty')) {
                     obj.appendChild(cursor)
-                } 
+                }
                 else {
                     const insertArea = (obj.getAttribute('data-displace-cursor') === 'in') ? obj : obj.parentNode;
                     const rect = obj.getBoundingClientRect();
                     const centerX = rect.left + rect.width / 2;
-                    
+
                     if (obj.getAttribute('data-displace-cursor') === 'in') {
                       if (event.clientX < centerX) {
                         insertArea.insertBefore(cursor, insertArea.firstElementChild);
@@ -201,6 +199,7 @@ var Solver = (function() {
         }
         blinkInterval = setInterval(() => { cursor.classList.toggle('blink') }, 500)
         textarea.focus()
+        drawer.style.bottom = '0'
     }
     function textareaInput(event) {
         console.log(event.key)
@@ -209,11 +208,14 @@ var Solver = (function() {
             handler(event)
         } else if (event.key.length == 1 && /^[0-9a-zA-Z+\-*]$/.test(event.key)) {
             isTextareaClear = false
-            cursor.parentNode.classList.remove('empty')
             writeText(event.key)
         }
     }
     function writeText(obj) {
+        if (!isCursorSet)
+            return
+
+        cursor.parentNode.classList.remove('empty')
         const insertArea = cursor.parentNode
         switch (obj) {
             case '*':
@@ -227,7 +229,7 @@ var Solver = (function() {
         elem.innerText = obj
         insertArea.insertBefore(elem, cursor)
     }
-    function getUnfocused(event) {
+    function getUnfocused() {
         cursor.remove()
 
         if (areaOfReaction.innerText.length == 0) {
@@ -238,32 +240,27 @@ var Solver = (function() {
             isTextareaClear = false
 
         isCursorSet = false
-    }
-    function keyboardReaction(event) {
-        if (event.target != keyboard.firstElementChild) {
-            // When no cursor and cursor
-            event.preventDefault()
-            createMathEq(event.target.dataset.append)
-        }
+        drawer.style.bottom = '-125px'
     }
     function createMatrix(event) {
-        if (0 < yMatrix.value && yMatrix.value <= 10 &&
-            0 < xMatrix.value && xMatrix.value <= 10) {
+        if (0 < y.value && y.value <= 10 &&
+            0 < x.value && x.value <= 10) {
             event.preventDefault()
             // Main matrix
-            createMathEq(null, MathElements.matrix(xMatrix.value, yMatrix.value))
+            createMathEq(null, MathElements.matrix(x.value, y.value))
             // vector
-            createMathEq(null, MathElements.matrix(yMatrix.value, 1, false))
+            createMathEq(null, MathElements.matrix(y.value, 1, false))
             // eq
             areaOfReaction.appendChild(MathElements.createElement('span', '', '='))
             // To advanced
-            createMathEq(null, MathElements.matrix(xMatrix.value, 1))
+            createMathEq(null, MathElements.matrix(x.value, 1))
         }
     }
     function createSystem(event) {
-        if (ySystem.checkValidity() && xSystem.checkValidity()) {
+        if (0 < y.value && y.value <= 10 &&
+            0 < x.value && x.value <= 10)  {
             event.preventDefault()
-            createMathEq(null, MathElements.system(parseInt(ySystem.value), parseInt(xSystem.value)))
+            createMathEq(null, MathElements.system(parseInt(y.value), parseInt(x.value)))
         }
     }
     // Preparation for Solve
@@ -311,12 +308,12 @@ var Solver = (function() {
                 let cols = elem.getAttribute('data-cols')
                 let rows = elem.getAttribute('data-rows')
                 matrix.push([elem, parseInt(rows), parseInt(cols)])
-            } 
+            }
         }
 
         if (matrix[0][1] == matrix[2][1] && matrix[0][2] == matrix[1][1] &&
             matrix[1][2] == 1 && matrix[2][2] == 1
-        ) 
+        )
             return matrix
         else {
             throw new Error('Not matrix form of linear equation')
@@ -324,12 +321,12 @@ var Solver = (function() {
     }
     function getMatrixData(block, rows, columns, symbolic_allowed=false) {
         const cells = block.querySelectorAll('td.matrix-cell');
-  
+
         const matrix = [];
 
         for (let i = 0; i < rows; i++) {
             const row = [];
-    
+
             for (let j = 0; j < columns; j++) {
                 const index = i * columns + j;
 
@@ -338,7 +335,7 @@ var Solver = (function() {
 
             matrix.push(row);
         }
-  
+
         return matrix;
     }
     function combineMatrices(matrix1, matrix2) {
@@ -349,7 +346,7 @@ var Solver = (function() {
 
         for (let i = 0; i < matrix1.length; i++) {
             const newRow = [...matrix1[i]];
-    
+
             if (matrix2[i].length > 0) {
                 newRow.push(matrix2[i][0]);
             }
@@ -373,7 +370,7 @@ var Solver = (function() {
                 let rows = elem.getAttribute('data-rows')
                 system = [elem, parseInt(rows), parseInt(cols)+1]
                 break
-            } 
+            }
         }
 
         return getMatrixData(system[0], system[1], system[2], false)
@@ -384,24 +381,24 @@ var Solver = (function() {
             if (MathElements.cMatrix == 3 && MathElements.cSystems == 0) {
                 let advancedMatrix = undefined
                 const parsedData = parseMatrix() // Throws Error if more than two different sizes
-    
+
                 // Throws error if in matrix there are character symbols
                 advancedMatrix = gatherMatrix(parsedData[0], parsedData[2])
-    
+
                 if (advancedMatrix == undefined)
                     return [equationType.WRG_INPUT, null]
-    
+
                 return [equationType.MATRIX_EQ, advancedMatrix]
             } else if (MathElements.cMatrix == 0 && MathElements.cSystems == 1) {
                 // Throws error if in matrix there are character symbols
                 const parsedData = parseSystem()
-    
+
                 return [equationType.MATRIX_EQ, parsedData]
             }
         } catch (e) {
             return [equationType.WRG_INPUT, null]
         }
-        
+
         return [equationType.CANNOT_SOLVE, null]
     }
     function showMethodSelector(taskname) {
@@ -433,7 +430,7 @@ var Solver = (function() {
     async function sendDataToServer(type, info, method) {
         data = {
             type: type,
-            info: info, 
+            info: info,
             method: method
         }
 
@@ -482,10 +479,10 @@ var Solver = (function() {
                     }
                 }
             } else if (query[0] == equationType.CANNOT_SOLVE)
-                createServerHTMLAsnwer(MathElements.createElement('span', '', 
+                createServerHTMLAsnwer(MathElements.createElement('span', '',
                     `Простите, однако наше приложение умеет решать только системы линейных уравнений. 😔`))
             else if (query[0] == equationType.WRG_INPUT)
-                createServerHTMLAsnwer(MathElements.createElement('span', '', 
+                createServerHTMLAsnwer(MathElements.createElement('span', '',
             'Проверьте корректность ввода и попробуйте снова! 🤓'))
         }
     }
@@ -544,6 +541,7 @@ var Solver = (function() {
         usrmsg.appendChild(cont)
         for (let elem of Array.from(areaOfReaction.children).slice(1)) {
             cont.appendChild(elem)
+            MathElements.disconnectObserversRecursively(elem)
         }
         msgHolder.appendChild(usrmsg)
     }
@@ -572,6 +570,9 @@ var Solver = (function() {
         blinkInterval = setInterval(() => { cursor.classList.toggle('blink') }, 500)
         textarea.focus()
     }
+    function test() {
+        setTimeout(() => {msgHolder.style.height = `${drawer.offsetTop - 10}px`}, 505)
+    }
     // Public Methods
     return {
         init: function() {
@@ -579,14 +580,10 @@ var Solver = (function() {
             cursor         = returnCursor()
             invite         = document.getElementById("invite")
             textarea       = document.getElementsByTagName("textarea")[0]
-            keyboardPopup  = document.getElementById('keyboard-popup')
-            keyboard       = document.getElementById('keyboard')
-            xMatrix        = document.getElementById('x')
-            yMatrix        = document.getElementById('y')
-            ySystem        = document.getElementById('s')
-            xSystem        = document.getElementById('xs')
+            x              = document.getElementById('x')
+            y              = document.getElementById('y')
+            drawer         = document.getElementById('drawer')
             msgHolder      = document.getElementById('msg-holder')
-            sendButton     = document.getElementById('send-button')
             selContainer   = document.getElementById('query-history')
 
             document.getElementById('create-system').addEventListener('mousedown', createSystem)
@@ -594,14 +591,23 @@ var Solver = (function() {
             areaOfReaction.addEventListener('mousedown', setCursorPosition)
             textarea.addEventListener('keydown', textareaInput)
             textarea.addEventListener('blur', getUnfocused)
-            keyboardPopup.addEventListener('click', () => {
-                if (keyboard.classList.toggle('unactive'))
-                    keyboardPopup.firstElementChild.firstElementChild.href.baseVal += '-active'
+            document.getElementById('send-button').addEventListener('click', SolutionProcess)
+            document.getElementById('keys').addEventListener('mousedown', (e) => {
+                key = e.target.getAttribute('data-append')
+                e.preventDefault()
+                if (MathElements.functionNames.contains(key))
+                    createMathEq(key)
+                else if (key == "Backspace")
+                    handleBackspace()
                 else
-                    keyboardPopup.firstElementChild.firstElementChild.href.baseVal = '#keyboard-icon'
+                    writeText(key)
             })
-            keyboard.firstElementChild.addEventListener('mousedown', keyboardReaction)
-            sendButton.addEventListener('click', SolutionProcess)
+
+            msgHolder.style.height = `${drawer.offsetTop - 10}px`
+            window.onresize = test
+
+            observer = new MutationObserver(test)
+            observer.observe(drawer, { attributes: true, attributeFilter: ['style'] })
         }
     }
 })()

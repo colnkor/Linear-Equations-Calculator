@@ -13,6 +13,12 @@ class MathElements {
     static cMatrix = 0
 
     static convertStringToMath(string) {
+        const glossary = {
+            '**(': MathElements.pow.bind(MathElements),
+            '(': MathElements.parentheses.bind(MathElements),
+            'sqrt(': MathElements.sqrt.bind(MathElements),
+        }
+
         function findFirstParenthesesContent(str) {
             let count = 0;
             let start = -1;
@@ -53,11 +59,21 @@ class MathElements {
             if (string[elem] === '/') {
                 const frac = this.frac(false)
                 memoryRelease(frac.getCursorPosition(), memory)
-                const mat = string.slice(elem).match(/\/(\d*)/)
-                frac.getBlock().lastElementChild.appendChild(this.convertStringToMath(mat[1]))
+                
+                let mat = undefined
+                let to_replace = undefined
+                if (string[elem+1] === '(') {
+                    mat = findFirstParenthesesContent(string)
+                    to_replace = '('+mat+')'
+                }
+                else {
+                    mat = string.slice(elem).match(/\/(\d*)/)[1]
+                    to_replace = mat
+                }
+
+                frac.getBlock().lastElementChild.appendChild(this.convertStringToMath(mat))
                 putIn.appendChild(frac.getBlock())
-                string = string.replace(mat[0], '')
-                elem--
+                string = string.replace(to_replace, '')
                 continue
             }
             else if (string[elem] === '_') {
@@ -69,24 +85,16 @@ class MathElements {
                 continue
             }
             memoryRelease(putIn, memory)
-            if (string[elem] === '(') {
-                const paren = this.parentheses(false)
-                const mat = findFirstParenthesesContent(mat)
-                paren.getCursorPosition().appendChild(this.convertStringToMath(mat))
-                memory.push(paren.getBlock())
-                string = string.replace('('+mat+')', '')
+
+            let key = string.slice(elem, string.indexOf('(')+1)
+            if (glossary.hasOwnProperty(key)) {
+                const mat = findFirstParenthesesContent(string)
+                const math = glossary[key](false)
+                math.getCursorPosition().appendChild(this.convertStringToMath(mat))
+                memory.push(math.getBlock())
+                string = string.replace(key+mat+')', '')
                 elem--
                 continue
-            } else if (string[elem] === 's') {
-                const mat = findFirstParenthesesContent(string)
-                if (mat) {
-                    const sq = this.sqrt(false)
-                    sq.getCursorPosition().appendChild(this.convertStringToMath(mat))
-                    memory.push(sq.getBlock())
-                    string = string.replace('sqrt('+mat+')', '')
-                    elem--
-                    continue
-                }
             }
             putIn.appendChild(this.createElement('span', '', string[elem]))
         }
@@ -329,9 +337,12 @@ class MathElements {
         }
     }
 
-    static pow() {
+    static pow(isEmpty=true) {
         const block = this.createElement('span', 'block')
         const pow   = this.createElement('sup', 'empty')
+
+        if (!isEmpty) 
+            pow.classList.remove('empty')
 
         block.setAttribute('data-math', 'pow')
         block.appendChild(pow)

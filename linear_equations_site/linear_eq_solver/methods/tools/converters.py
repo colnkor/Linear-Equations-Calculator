@@ -1,5 +1,4 @@
 def stringify_matrix(matrix):
-    from sympy import nsimplify 
     def stringify_many(matrix):
         result = {}
         search_from = 0
@@ -16,6 +15,8 @@ def stringify_matrix(matrix):
                 # Нахождение остальных свободных неизвестных
                 if (row[unkwn] != 0):
                     result[pivot_index] += f'{'+' if row[unkwn] < 0 else ''}{str(-row[unkwn])}'+'x_'+str(unkwn+1)
+            if result[pivot_index] == '':
+                result[pivot_index] = '0'
         return result
 
     return stringify_many(matrix[1])

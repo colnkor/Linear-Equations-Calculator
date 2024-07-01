@@ -39,6 +39,7 @@ sup {
 }
 
 .denominator {
+    position: relative;
     text-align: center;
     display: block;
     border-top: 1px solid #000;
@@ -46,6 +47,7 @@ sup {
 }
 
 .numerator {
+    position: relative;
     text-align: center;
     display: block;
 }
@@ -79,9 +81,11 @@ sup {
 }
 
 .block {
+    white-space: nowrap;
     display: inline-block;
     vertical-align: middle;
     padding: 0 3px 0 3px;
+    text-align: center;
 }
 
 .matrix-content, .system-content{
@@ -92,12 +96,31 @@ sup {
     vertical-align: middle;
 }
 
-.matrix-cell, .system-row {
-    text-align: center;
+.matrix-cell {
+    display: flex;
+    /* text-align: center; */
+    align-items: baseline;
+}
+
+.matrix-row {
+    vertical-align: middle;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px;
 }
 
 .paren {
     display: inline-block;
+}
+
+.sqrt-head {
+    display: inline-flex;
+    margin-top: 3px;
+    border-top: 1px solid;
+    padding-right: .2em;
+    align-items: flex-end;
+    vertical-align: bottom;
 }
 
 .selection {
@@ -105,4 +128,14 @@ sup {
     background: Highlight;
     color: HighlightText;
     border-color: HighlightText;
+}
+
+sup .denominator {
+    font-size: 80%;
+    top: -0.5em;
+}
+
+sup .numerator {
+    font-size: 80%;
+    top: -0.5em;
 }

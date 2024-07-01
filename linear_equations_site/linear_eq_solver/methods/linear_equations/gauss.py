@@ -19,8 +19,6 @@ def Gauss(matrix, find_rank=False):
     # Lead values should be maximum numbers in a column
     # For more accurate computing
     for lead_row in range(len(new_matrix)):
-        if lead_row >= len(new_matrix):
-            break
         for lead_column in range(lead_row, columns):
             max_val = abs(new_matrix[lead_row][lead_column]) 
             at = 0
@@ -48,13 +46,7 @@ def Gauss(matrix, find_rank=False):
                     continue
                 for elim_col in range(lead_column, columns):
                     new_matrix[elim_row][elim_col] -= new_matrix[lead_row][elim_col] * coef
-            new_matrix = check_for_nulls(new_matrix)
             break
     if (find_rank):
-        return (len(new_matrix), new_matrix)
-    return new_matrix
-
-            
-
-
-
+        return (len(new_matrix), check_for_nulls(new_matrix))
+    return check_for_nulls(new_matrix)

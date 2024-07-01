@@ -6,8 +6,9 @@ def is_letter(char):
 def check_letters_in_2d_array(arr):
     for row in arr:
         for item in row:
-            if isinstance(item, str):
-                if any(is_letter(char) for char in item) and item.lower() != 'abs':
+            key = item.replace('abs', '')
+            if isinstance(key, str):
+                if any(is_letter(char) for char in key):
                     return True
     return False
 
